@@ -3,30 +3,33 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/bg"
+    android:background="@color/background"
     android:padding="12dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
         <TextView
-            android:id="@+id/titleText"
+            android:id="@+id/title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="NEXT CANDLE AI"
+            android:text="@string/app_name"
             android:textColor="@android:color/white"
             android:textSize="20sp"
             android:textStyle="bold" />
+
         <TextView
-            android:id="@+id/statusText"
+            android:id="@+id/stateText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="STARTING"
             android:textColor="@color/accent"
             android:textStyle="bold" />
+
     </LinearLayout>
 
     <FrameLayout
@@ -41,23 +44,30 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
-        <View
-            android:id="@+id/roiView"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_margin="18dp"
-            android:background="@drawable/roi_border" />
+        <TextView
+            android:id="@+id/roiLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|center_horizontal"
+            android:layout_marginTop="10dp"
+            android:padding="6dp"
+            android:text="SHOW 10-20 CLEAN CANDLES"
+            android:textColor="@color/cyan"
+            android:textStyle="bold" />
+
     </FrameLayout>
 
     <TextView
         android:id="@+id/predictionText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="8dp"
+        android:background="@color/panel"
         android:gravity="center"
+        android:padding="12dp"
         android:text="NO EDGE"
         android:textColor="@color/accent"
-        android:textSize="34sp"
+        android:textSize="32sp"
         android:textStyle="bold" />
 
     <TextView
@@ -65,7 +75,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
-        android:text="UP 50.0%   DOWN 50.0%"
+        android:paddingTop="6dp"
+        android:text="UP 50.0%    DOWN 50.0%"
         android:textColor="@android:color/white"
         android:textSize="15sp" />
 
@@ -80,12 +91,12 @@
         android:textSize="13sp" />
 
     <TextView
-        android:id="@+id/detailsText"
+        android:id="@+id/reasonsText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:paddingTop="6dp"
-        android:paddingBottom="8dp"
-        android:text="Point the camera at 10-20 clear candles."
+        android:text="Waiting for a readable chart..."
         android:textColor="@color/muted"
         android:textSize="13sp" />
+
 </LinearLayout>

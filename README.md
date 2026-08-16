@@ -1,21 +1,23 @@
-# Next Candle AI Ultimate 2.0
+# Next Candle AI Ultimate 3.0 - Clean Rebuild
 
-A clean Android project for live camera-based next-candle analysis.
+Standalone Android camera application for live next-candle analysis.
 
-## Build with GitHub Actions
-1. Upload this repository to GitHub.
-2. Open Actions.
-3. Run Build Next Candle AI APK.
-4. Download the artifact NextCandleAI-debug-apk.
+The app:
+- watches a visible candlestick chart with the phone camera
+- attempts to reconstruct a rolling set of up to 15 candles
+- analyzes candle geometry
+- analyzes short/long trajectory
+- detects price-structure proxies
+- detects visible price-based liquidity sweep proxies
+- analyzes momentum and volatility
+- classifies a simple market regime
+- combines independent components
+- outputs UP, DOWN, or NO EDGE
 
-## Android build
-- AGP 8.13.0
-- Gradle 8.13
+Important:
+This is a research/analysis application, not a guaranteed predictor. A camera-only system cannot observe hidden order-book liquidity, true spread, tick flow, or news that is not visible in the chart.
+
+Build:
 - JDK 17
-- compileSdk 36
-- targetSdk 36
-- minSdk 24
-- CameraX 1.6.1
-
-## No bridge
-This project is standalone. It does not need MT5, Python, a broker, or a network connection.
+- Gradle 8.13
+- Android SDK 36

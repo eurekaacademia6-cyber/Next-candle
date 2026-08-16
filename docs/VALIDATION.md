@@ -1,5 +1,16 @@
 # Validation
 
-Measure accuracy, UP/DOWN precision, recall, log loss, Brier score, calibration error, coverage, and expectancy under a clearly defined outcome horizon.
+Never claim a win rate from in-sample results.
 
-Use chronological walk-forward testing. Do not tune thresholds on the final holdout. Do not claim probability quality without calibration on unseen data.
+Use chronological train/test splits and walk-forward evaluation.
+
+Measure:
+- accuracy
+- precision by direction
+- Brier score
+- log loss
+- calibration
+- coverage at confidence thresholds
+- expectancy under a clearly defined outcome rule
+
+A model must remain disabled for live use until its out-of-sample metrics have been reviewed.

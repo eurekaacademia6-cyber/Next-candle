@@ -1,1 +1,36 @@
-package com.nextcandle.ai; import android.graphics.Bitmap; import java.util.*; public final class ChartVisionEngine{private final CandleSequenceBuilder builder=new CandleSequenceBuilder();public List<Candle>analyzeFrame(Bitmap b){if(b==null)return Collections.emptyList();int w=b.getWidth(),h=b.getHeight(),n=w*h;int[]px=new int[n],g=new int[n];b.getPixels(px,0,w,0,0,w,h);for(int i=0;i<n;i++){int p=px[i];g[i]=(int)(.299*((p>>16)&255)+.587*((p>>8)&255)+.114*(p&255));}return builder.buildFromImage(g,w,h);}}
+package com.nextcandle.ai;
+
+import android.graphics.Bitmap;
+import java.util.List;
+
+public final class ChartVisionEngine {
+
+    private final CandleSequenceBuilder sequenceBuilder =
+            new CandleSequenceBuilder();
+
+    public List<Candle> analyze(Bitmap bitmap) {
+        if (bitmap == null) {
+            return java.util.Collections.emptyList();
+        }
+
+        int width = bitmap.getWidth();
+        int height = bitmap.getHeight();
+
+        int[] pixels = new int[width * height];
+        bitmap.getPixels(pixels, 0, width, 0, 0, width, height);
+
+        int[] gray = new int[pixels.length];
+
+        for (int i = 0; i < pixels.length; i++) {
+            int pixel = pixels[i];
+
+            int r = (pixel >> 16) & 0xFF;
+            int g = (pixel >> 8) & 0xFF;
+            int b = pixel & 0xFF;
+
+            gray[i] = (int) (0.299 * r + 0.587 * g + 0.114 * b);
+        }
+
+        return sequenceBuilder.buildProxySequence(gray, width, height);
+    }
+}

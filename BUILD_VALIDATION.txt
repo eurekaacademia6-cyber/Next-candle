@@ -1,9 +1,8 @@
 {
-  "python_syntax_ok": true,
-  "python_errors": [
-    "",
-    ""
-  ],
+  "xml_parse_ok": true,
+  "duplicate_style_names": {},
+  "java_non_ascii": [],
+  "xml_non_ascii": [],
   "pure_java_compile_ok": true,
-  "java_smoke": "NO EDGE 0.6412800940999072 0.47683667493846926\n"
+  "java_smoke_output": "NO EDGE\n0.6433983081132714\n0.47916671035316993"
 }

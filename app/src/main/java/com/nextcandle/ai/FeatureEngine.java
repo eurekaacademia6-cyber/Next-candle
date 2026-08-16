@@ -1,142 +1,172 @@
 package com.nextcandle.ai;
 
+import java.util.Arrays;
 import java.util.List;
 
 public final class FeatureEngine {
-    public FeatureVector extract(List<Candle> c) {
-        FeatureVector f = new FeatureVector();
-        int n = c.size();
-        if (n < 5) return f;
 
+    public FeatureVector extract(List<Candle> candles) {
+        FeatureVector f = new FeatureVector();
+
+        if (candles == null || candles.size() < 5) {
+            return f;
+        }
+
+        int n = candles.size();
         double[] closes = new double[n];
         double[] ranges = new double[n];
         double[] bodies = new double[n];
+
         for (int i = 0; i < n; i++) {
-            Candle k = c.get(i);
-            closes[i] = k.close;
-            ranges[i] = k.range();
-            bodies[i] = k.body();
+            Candle c = candles.get(i);
+            closes[i] = c.close;
+            ranges[i] = c.range();
+            bodies[i] = c.body();
         }
 
-        int s5 = Math.max(0, n - 5);
-        int s10 = Math.max(0, n - 10);
-        int s15 = Math.max(0, n - 15);
-        double avgRange = Math.max(1e-9, mean(ranges, s15, n));
-        double avgBody = Math.max(1e-9, meanAbs(bodies, s15, n));
-        Candle last = c.get(n - 1);
+        Candle last = candles.get(n - 1);
+        double meanRange = Math.max(1e-9, Maths.mean(ranges));
+        double meanBody = Math.max(1e-9, Maths.meanAbs(bodies));
 
-        f.set(0, last.body() / avgRange);
-        f.set(1, last.upperWick() / avgRange);
-        f.set(2, last.lowerWick() / avgRange);
-        f.set(3, 2.0 * last.closePosition() - 1.0);
-        f.set(4, last.range() / avgRange - 1.0);
-        f.set(5, last.bodyAbs() / avgBody - 1.0);
-        f.set(6, (last.close - closes[Math.max(0, n - 4)]) / avgRange);
-        f.set(7, (last.close - closes[Math.max(0, n - 7)]) / avgRange);
+        f.set(0, last.body() / meanRange);
+        f.set(1, last.upperWick() / meanRange);
+        f.set(2, last.lowerWick() / meanRange);
+        f.set(3, last.closePosition() * 2.0 - 1.0);
+        f.set(4, last.range() / meanRange - 1.0);
+        f.set(5, last.bodyAbs() / meanBody - 1.0);
 
-        double m5 = mean(closes, s5, n);
-        double m10 = mean(closes, s10, n);
-        f.set(8, (last.close - m5) / avgRange);
-        f.set(9, (m5 - m10) / avgRange);
-        f.set(10, slope(closes, s5, n) / avgRange);
-        f.set(11, slope(closes, s10, n) / avgRange);
-        f.set(12, mean(ranges, s5, n) / Math.max(1e-9, mean(ranges, s10, s5)) - 1.0);
+        f.set(6, (last.close - closes[Math.max(0, n - 4)]) / meanRange);
+        f.set(7, (last.close - closes[Math.max(0, n - 7)]) / meanRange);
 
-        double hh = Double.NEGATIVE_INFINITY;
-        double ll = Double.POSITIVE_INFINITY;
+        double mean5 = meanLast(closes, 5);
+        double mean10 = meanLast(closes, 10);
+        f.set(8, (last.close - mean5) / meanRange);
+        f.set(9, (mean5 - mean10) / meanRange);
+
+        f.set(10, slope(closes, Math.min(5, n)) / meanRange);
+        f.set(11, slope(closes, Math.min(10, n)) / meanRange);
+
+        double last5Range = meanLast(ranges, 5);
+        double previous5Range = meanPrevious(ranges, 10, 5);
+        f.set(12, previous5Range == 0.0 ? 0.0 : last5Range / previous5Range - 1.0);
+
+        double recentHigh = Double.NEGATIVE_INFINITY;
+        double recentLow = Double.POSITIVE_INFINITY;
+
         for (int i = 0; i < n - 1; i++) {
-            hh = Math.max(hh, c.get(i).high);
-            ll = Math.min(ll, c.get(i).low);
+            recentHigh = Math.max(recentHigh, candles.get(i).high);
+            recentLow = Math.min(recentLow, candles.get(i).low);
         }
-        f.set(13, (last.close - hh) / avgRange);
-        f.set(14, (last.close - ll) / avgRange);
-        f.set(15, last.low < ll && last.close > ll ? 1.0 : 0.0);
-        f.set(16, last.high > hh && last.close < hh ? 1.0 : 0.0);
+
+        f.set(13, (last.close - recentHigh) / meanRange);
+        f.set(14, (last.close - recentLow) / meanRange);
+
+        boolean downsideSweep = last.low < recentLow && last.close > recentLow;
+        boolean upsideSweep = last.high > recentHigh && last.close < recentHigh;
+        f.set(15, downsideSweep ? 1.0 : 0.0);
+        f.set(16, upsideSweep ? 1.0 : 0.0);
 
         if (n >= 2) {
-            Candle prev = c.get(n - 2);
-            boolean bullEngulf = last.bullish() && prev.bearish() && last.open <= prev.close && last.close >= prev.open;
-            boolean bearEngulf = last.bearish() && prev.bullish() && last.open >= prev.close && last.close <= prev.open;
-            f.set(17, bullEngulf ? 1.0 : (bearEngulf ? -1.0 : 0.0));
+            Candle previous = candles.get(n - 2);
+
+            boolean bullishEngulfing =
+                    last.bullish() &&
+                    previous.bearish() &&
+                    last.open <= previous.close &&
+                    last.close >= previous.open;
+
+            boolean bearishEngulfing =
+                    last.bearish() &&
+                    previous.bullish() &&
+                    last.open >= previous.close &&
+                    last.close <= previous.open;
+
+            f.set(17, bullishEngulfing ? 1.0 : (bearishEngulfing ? -1.0 : 0.0));
         }
 
-        f.set(18, (last.lowerWick() - last.upperWick()) / avgRange);
-        f.set(19, directionalStreak(c));
-        f.set(20, (last.range() - mean(ranges, s5, n)) / avgRange);
-        f.set(21, rsiLike(closes, Math.min(10, n)) / 50.0 - 1.0);
-        f.set(22, Math.signum(slope(closes, s5, n)) * Math.min(1.0, Math.abs(slope(closes, s5, n)) / avgRange));
-        f.set(23, Maths.clamp(slope(closes, s10, n) / avgRange, -1.0, 1.0));
-        f.set(24, (last.close - m10) / avgRange);
-        f.set(25, stdev(ranges, s5, n) / avgRange);
-        if (n >= 3) {
-            double a1 = closes[n - 1] - closes[n - 2];
-            double a2 = closes[n - 2] - closes[n - 3];
-            f.set(26, (a1 - a2) / avgRange);
+        f.set(18, (last.lowerWick() - last.upperWick()) / meanRange);
+
+        int streak = 0;
+        boolean direction = last.bullish();
+        for (int i = n - 1; i >= 0; i--) {
+            Candle c = candles.get(i);
+            if ((c.bullish() == direction) && c.bodyAbs() > 0.0) {
+                streak++;
+            } else {
+                break;
+            }
         }
+        f.set(19, direction ? streak / 5.0 : -streak / 5.0);
+
+        f.set(20, (last.range() - last5Range) / meanRange);
+        f.set(21, rsi(candles, 10) / 50.0 - 1.0);
+
+        f.set(22, Maths.clamp(f.x[10] / 2.0, -1.0, 1.0));
+        f.set(23, Maths.clamp(f.x[11] / 2.0, -1.0, 1.0));
+        f.set(24, (last.close - mean10) / meanRange);
+
+        double[] last5 = Arrays.copyOfRange(
+                ranges, Math.max(0, ranges.length - 5), ranges.length);
+        f.set(25, Maths.clamp(Maths.stdev(last5) / meanRange, -3.0, 3.0));
+
+        if (n >= 3) {
+            double firstMove = closes[n - 2] - closes[n - 3];
+            double secondMove = closes[n - 1] - closes[n - 2];
+            f.set(26, (secondMove - firstMove) / meanRange);
+        }
+
         f.set(27, Math.min(1.0, n / 15.0));
-        f.set(28, Math.abs(slope(closes, s5, n)) / avgRange);
-        f.set(29, (last.close - hh) / Math.max(1e-9, hh - ll));
-        f.set(30, (last.close - ll) / Math.max(1e-9, hh - ll));
-        f.set(31, n >= 10 ? 1.0 : 0.5);
         return f;
     }
 
-    private double directionalStreak(List<Candle> c) {
-        Candle last = c.get(c.size() - 1);
-        boolean dir = last.bullish();
-        int streak = 0;
-        for (int i = c.size() - 1; i >= 0; i--) {
-            Candle k = c.get(i);
-            if ((k.bullish() == dir) && k.bodyAbs() > 0.0) streak++; else break;
-        }
-        double signed = dir ? streak : -streak;
-        return signed / 5.0;
+    private double meanLast(double[] values, int count) {
+        int start = Math.max(0, values.length - count);
+        return Maths.mean(Arrays.copyOfRange(values, start, values.length));
     }
 
-    private static double mean(double[] a, int start, int end) {
+    private double meanPrevious(double[] values, int totalLookback, int count) {
+        int end = Math.max(0, values.length - count);
+        int start = Math.max(0, end - count);
         if (end <= start) return 0.0;
-        double s = 0.0;
-        for (int i = start; i < end; i++) s += a[i];
-        return s / (end - start);
+        return Maths.mean(Arrays.copyOfRange(values, start, end));
     }
 
-    private static double meanAbs(double[] a, int start, int end) {
-        if (end <= start) return 0.0;
-        double s = 0.0;
-        for (int i = start; i < end; i++) s += Math.abs(a[i]);
-        return s / (end - start);
-    }
+    private double slope(double[] values, int count) {
+        if (count < 2) return 0.0;
+        int start = Math.max(0, values.length - count);
 
-    private static double stdev(double[] a, int start, int end) {
-        if (end - start < 2) return 0.0;
-        double m = mean(a, start, end);
-        double s = 0.0;
-        for (int i = start; i < end; i++) { double d = a[i] - m; s += d * d; }
-        return Math.sqrt(s / (end - start - 1));
-    }
+        double sx = 0.0;
+        double sy = 0.0;
+        double sxx = 0.0;
+        double sxy = 0.0;
 
-    private static double slope(double[] a, int start, int end) {
-        int n = end - start;
-        if (n < 2) return 0.0;
-        double sx = 0, sy = 0, sxx = 0, sxy = 0;
-        for (int i = 0; i < n; i++) {
-            double x = i, y = a[start + i];
-            sx += x; sy += y; sxx += x*x; sxy += x*y;
+        for (int i = 0; i < count; i++) {
+            double x = i;
+            double y = values[start + i];
+            sx += x;
+            sy += y;
+            sxx += x * x;
+            sxy += x * y;
         }
-        double den = n * sxx - sx * sx;
-        return den == 0 ? 0.0 : (n * sxy - sx * sy) / den;
+
+        double denominator = count * sxx - sx * sx;
+        return denominator == 0.0 ? 0.0 :
+                (count * sxy - sx * sy) / denominator;
     }
 
-    private static double rsiLike(double[] closes, int period) {
-        if (closes.length < 2) return 50.0;
-        int start = Math.max(1, closes.length - period);
-        double gain = 0.0, loss = 0.0;
-        for (int i = start; i < closes.length; i++) {
-            double d = closes[i] - closes[i - 1];
-            if (d > 0) gain += d; else loss -= d;
+    private double rsi(List<Candle> candles, int period) {
+        int start = Math.max(1, candles.size() - period);
+        double gains = 0.0;
+        double losses = 0.0;
+
+        for (int i = start; i < candles.size(); i++) {
+            double change = candles.get(i).close - candles.get(i - 1).close;
+            if (change > 0) gains += change;
+            else losses -= change;
         }
-        if (loss == 0.0) return 100.0;
-        double rs = gain / loss;
-        return 100.0 - (100.0 / (1.0 + rs));
+
+        if (losses == 0.0) return 100.0;
+        double rs = gains / losses;
+        return 100.0 - 100.0 / (1.0 + rs);
     }
 }

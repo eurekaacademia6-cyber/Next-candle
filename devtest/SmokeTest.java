@@ -1,1 +1,33 @@
-import com.nextcandle.ai.*;import java.util.*;public class SmokeTest{public static void main(String[]a){List<Candle> c=new ArrayList<>();double p=100;for(int i=0;i<15;i++){double o=p,cl=p+.2; c.add(new Candle(o,cl+.1,o-.05,cl,100,i));p=cl;}Prediction x=new PredictionEngine().analyze(c);System.out.println(x.label+" "+x.up+" "+x.quality);}}
+import com.nextcandle.ai.Candle;
+import com.nextcandle.ai.Prediction;
+import com.nextcandle.ai.PredictionEngine;
+import java.util.ArrayList;
+import java.util.List;
+
+public class SmokeTest {
+    public static void main(String[] args) {
+        List<Candle> candles = new ArrayList<>();
+        double price = 100.0;
+
+        for (int i = 0; i < 15; i++) {
+            double open = price;
+            double close = price + 0.08 + (i % 3) * 0.02;
+            candles.add(new Candle(
+                open,
+                close + 0.04,
+                open - 0.03,
+                close,
+                100.0,
+                i
+            ));
+            price = close;
+        }
+
+        Prediction prediction =
+            new PredictionEngine().analyze(candles);
+
+        System.out.println(prediction.label);
+        System.out.println(prediction.upProbability);
+        System.out.println(prediction.confidence);
+    }
+}
