@@ -1,1 +1,24 @@
-package com.nextcandle.ai; import java.util.*; public final class Prediction{public final String label;public final double up,down,quality,agreement;public final RegimeEngine.Regime regime;public final List<String>reasons;public Prediction(String l,double u,double q,double a,RegimeEngine.Regime r,List<String>re){label=l;up=u;down=1-u;quality=q;agreement=a;regime=r;reasons=re;}}
+package com.nextcandle.ai;
+
+import java.util.List;
+
+public final class Prediction {
+    public final String label;
+    public final double up;
+    public final double down;
+    public final double quality;
+    public final double agreement;
+    public final RegimeEngine.Regime regime;
+    public final List<String> reasons;
+
+    public Prediction(String label, double up, double quality, double agreement,
+                      RegimeEngine.Regime regime, List<String> reasons) {
+        this.label = label;
+        this.up = up;
+        this.down = 1.0 - up;
+        this.quality = quality;
+        this.agreement = agreement;
+        this.regime = regime;
+        this.reasons = reasons;
+    }
+}

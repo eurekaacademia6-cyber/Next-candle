@@ -1,1 +1,56 @@
-package com.nextcandle.ai; import java.util.*; public final class PredictionEngine{private final FeatureEngine feat=new FeatureEngine();private final RegimeEngine reg=new RegimeEngine();private final RuleEnsemble ens=new RuleEnsemble();private final AdaptiveModel model=new AdaptiveModel();public Prediction analyze(List<Candle>c){if(c==null||c.size()<10)return new Prediction("NO EDGE",.5,0,0,RegimeEngine.Regime.UNKNOWN,Collections.singletonList("Need at least 10 readable candles."));FeatureVector f=feat.extract(c);RegimeEngine.Regime r=reg.detect(f);List<RuleEnsemble.Component>cc=ens.score(f,r);double rule=ens.average(cc),ml=model.predict(f);double mw=Math.min(.45,.10+model.samples()/2000.0);double p=rule*(1-mw)+ml*mw;double edge=Math.abs(p-.5)*2,agr=ens.agreement(cc,p),q=Maths.clamp(.55*edge+.30*agr+.15*f.x[27],0,1);String label=(q<.58||Math.abs(p-.5)<.09||agr<.57)?"NO EDGE":(p>=.5?"UP":"DOWN");List<String>rs=new ArrayList<>();if(f.x[6]>.15)rs.add("short-term momentum rising");if(f.x[6]<-.15)rs.add("short-term momentum falling");if(f.x[15]>.5)rs.add("downside liquidity sweep proxy");if(f.x[16]>.5)rs.add("upside liquidity sweep proxy");if(f.x[17]>.5)rs.add("bullish engulfing-like geometry");if(f.x[17]<-.5)rs.add("bearish engulfing-like geometry");if(f.x[18]>.2)rs.add("lower-wick rejection");if(f.x[18]<-.2)rs.add("upper-wick rejection");if(r==RegimeEngine.Regime.TRENDING_UP)rs.add("uptrend regime");if(r==RegimeEngine.Regime.TRENDING_DOWN)rs.add("downtrend regime");if(r==RegimeEngine.Regime.COMPRESSION)rs.add("compression regime");if(r==RegimeEngine.Regime.EXPANSION)rs.add("volatility expansion");if(rs.isEmpty())rs.add("signal components are not sufficiently aligned.");return new Prediction(label,p,q,agr,r,rs);} public AdaptiveModel adaptiveModel(){return model;}}
+package com.nextcandle.ai;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+public final class PredictionEngine {
+    private final FeatureEngine featureEngine = new FeatureEngine();
+    private final RegimeEngine regimeEngine = new RegimeEngine();
+    private final RuleEnsemble ruleEnsemble = new RuleEnsemble();
+    private final AdaptiveModel adaptiveModel = new AdaptiveModel();
+
+    public Prediction analyze(List<Candle> candles) {
+        if (candles == null || candles.size() < 10) {
+            return new Prediction("NO EDGE", 0.5, 0.0, 0.0, RegimeEngine.Regime.UNKNOWN,
+                    Collections.singletonList("Need at least 10 readable candles."));
+        }
+
+        FeatureVector features = featureEngine.extract(candles);
+        RegimeEngine.Regime regime = regimeEngine.detect(features);
+        List<RuleEnsemble.Component> components = ruleEnsemble.score(features, regime);
+        double ruleProbability = ruleEnsemble.average(components);
+        double adaptiveProbability = adaptiveModel.predict(features);
+
+        double adaptiveWeight = Math.min(0.45, 0.10 + adaptiveModel.samples() / 2000.0);
+        double probability = ruleProbability * (1.0 - adaptiveWeight) + adaptiveProbability * adaptiveWeight;
+
+        double edge = Math.abs(probability - 0.5) * 2.0;
+        double agreement = ruleEnsemble.agreement(components, probability);
+        double quality = Maths.clamp(0.55 * edge + 0.30 * agreement + 0.15 * features.x[27], 0.0, 1.0);
+
+        String label = "NO EDGE";
+        if (quality >= 0.58 && Math.abs(probability - 0.5) >= 0.09 && agreement >= 0.57) {
+            label = probability >= 0.5 ? "UP" : "DOWN";
+        }
+
+        List<String> reasons = new ArrayList<>();
+        if (features.x[6] > 0.15) reasons.add("short-term momentum rising");
+        if (features.x[6] < -0.15) reasons.add("short-term momentum falling");
+        if (features.x[15] > 0.5) reasons.add("downside liquidity sweep proxy");
+        if (features.x[16] > 0.5) reasons.add("upside liquidity sweep proxy");
+        if (features.x[17] > 0.5) reasons.add("bullish engulfing-like geometry");
+        if (features.x[17] < -0.5) reasons.add("bearish engulfing-like geometry");
+        if (features.x[18] > 0.2) reasons.add("lower-wick rejection");
+        if (features.x[18] < -0.2) reasons.add("upper-wick rejection");
+        if (regime == RegimeEngine.Regime.TREND_UP) reasons.add("uptrend regime");
+        if (regime == RegimeEngine.Regime.TREND_DOWN) reasons.add("downtrend regime");
+        if (regime == RegimeEngine.Regime.COMPRESSION) reasons.add("compression regime");
+        if (regime == RegimeEngine.Regime.EXPANSION) reasons.add("volatility expansion");
+        if (reasons.isEmpty()) reasons.add("evidence is mixed or too weak");
+
+        return new Prediction(label, probability, quality, agreement, regime, reasons);
+    }
+
+    public AdaptiveModel getAdaptiveModel() { return adaptiveModel; }
+}

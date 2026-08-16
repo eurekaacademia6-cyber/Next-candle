@@ -1,5 +1,140 @@
 package com.nextcandle.ai;
-import android.Manifest;import android.content.pm.PackageManager;import android.graphics.Bitmap;import android.os.*;import android.widget.*;import androidx.activity.ComponentActivity;import androidx.camera.core.*;import androidx.camera.lifecycle.ProcessCameraProvider;import androidx.camera.view.PreviewView;import androidx.core.app.ActivityCompat;import androidx.core.content.ContextCompat;import com.google.common.util.concurrent.ListenableFuture;import java.util.*;import java.util.concurrent.*;
-public final class MainActivity extends ComponentActivity{private static final int REQ=100;private PreviewView preview;private TextView state,pred,prob,diag,reasons;private final ExecutorService exec=Executors.newSingleThreadExecutor();private final Handler main=new Handler(Looper.getMainLooper());private final ChartVisionEngine vision=new ChartVisionEngine();private final PredictionEngine engine=new PredictionEngine();private volatile long last=0;private volatile boolean busy=false;@Override protected void onCreate(Bundle b){super.onCreate(b);setContentView(R.layout.activity_main);preview=findViewById(R.id.previewView);state=findViewById(R.id.stateText);pred=findViewById(R.id.prediction);prob=findViewById(R.id.probability);diag=findViewById(R.id.diagnostics);reasons=findViewById(R.id.reasons);if(ContextCompat.checkSelfPermission(this,Manifest.permission.CAMERA)!=PackageManager.PERMISSION_GRANTED)ActivityCompat.requestPermissions(this,new String[]{Manifest.permission.CAMERA},REQ);else start();}private void start(){state.setText("LIVE CAMERA");ListenableFuture<ProcessCameraProvider>f=ProcessCameraProvider.getInstance(this);f.addListener(()->{try{ProcessCameraProvider p=f.get();Preview pr=new Preview.Builder().build();pr.setSurfaceProvider(preview.getSurfaceProvider());ImageAnalysis a=new ImageAnalysis.Builder().setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888).build();a.setAnalyzer(exec,img->analyze(img));p.unbindAll();p.bindToLifecycle(this,CameraSelector.DEFAULT_BACK_CAMERA,pr,a);}catch(Exception e){state.setText("CAMERA ERROR");}},ContextCompat.getMainExecutor(this));}private void analyze(ImageProxy img){long now=System.currentTimeMillis();if(busy||now-last<700){img.close();return;}busy=true;last=now;try{Bitmap bmp=Bitmap.createBitmap(img.getWidth(),img.getHeight(),Bitmap.Config.ARGB_8888);bmp.copyPixelsFromBuffer(img.getPlanes()[0].getBuffer());List<Candle>c=vision.analyzeFrame(bmp);Prediction p=engine.analyze(c);main.post(()->render(p,c.size()));}finally{img.close();busy=false;}}private void render(Prediction p,int n){pred.setText(p.label);prob.setText(String.format(Locale.US,"UP %.1f%%    DOWN %.1f%%",p.up*100,p.down*100));diag.setText(String.format(Locale.US,"Candles: %d | Quality: %.0f%% | Model agreement: %.0f%%",n,p.quality*100,p.agreement*100));StringBuilder s=new StringBuilder("Regime: ").append(p.regime.name()).append("
-");for(String r:p.reasons)s.append("• ").append(r).append("
-");reasons.setText(s.toString());}@Override protected void onDestroy(){super.onDestroy();exec.shutdownNow();}}
+
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.os.Bundle;
+import android.widget.TextView;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.camera.core.CameraSelector;
+import androidx.camera.core.ImageAnalysis;
+import androidx.camera.core.ImageProxy;
+import androidx.camera.core.Preview;
+import androidx.camera.lifecycle.ProcessCameraProvider;
+import androidx.camera.view.PreviewView;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
+import com.google.common.util.concurrent.ListenableFuture;
+
+import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public final class MainActivity extends AppCompatActivity {
+    private static final int CAMERA_REQUEST = 41;
+
+    private PreviewView previewView;
+    private TextView statusText;
+    private TextView predictionText;
+    private TextView probabilityText;
+    private TextView diagnosticsText;
+    private TextView detailsText;
+
+    private final ExecutorService analyzerExecutor = Executors.newSingleThreadExecutor();
+    private final CandleDetector candleDetector = new CandleDetector();
+    private final PredictionEngine predictionEngine = new PredictionEngine();
+
+    private volatile long lastAnalysisMs = 0L;
+    private volatile boolean analyzing = false;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        previewView = findViewById(R.id.previewView);
+        statusText = findViewById(R.id.statusText);
+        predictionText = findViewById(R.id.predictionText);
+        probabilityText = findViewById(R.id.probabilityText);
+        diagnosticsText = findViewById(R.id.diagnosticsText);
+        detailsText = findViewById(R.id.detailsText);
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, CAMERA_REQUEST);
+        } else {
+            startCamera();
+        }
+    }
+
+    private void startCamera() {
+        statusText.setText("LIVE CAMERA");
+        ListenableFuture<ProcessCameraProvider> providerFuture = ProcessCameraProvider.getInstance(this);
+        providerFuture.addListener(() -> {
+            try {
+                ProcessCameraProvider provider = providerFuture.get();
+
+                Preview preview = new Preview.Builder().build();
+                preview.setSurfaceProvider(previewView.getSurfaceProvider());
+
+                ImageAnalysis analysis = new ImageAnalysis.Builder()
+                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                        .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
+                        .build();
+                analysis.setAnalyzer(analyzerExecutor, this::analyzeFrame);
+
+                provider.unbindAll();
+                provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis);
+            } catch (Exception e) {
+                statusText.setText("CAMERA ERROR");
+                detailsText.setText("Camera failed to start: " + e.getClass().getSimpleName());
+            }
+        }, ContextCompat.getMainExecutor(this));
+    }
+
+    private void analyzeFrame(@NonNull ImageProxy image) {
+        long now = System.currentTimeMillis();
+        if (analyzing || now - lastAnalysisMs < 700L) {
+            image.close();
+            return;
+        }
+        analyzing = true;
+        lastAnalysisMs = now;
+
+        try {
+            int[] gray = ImageTools.rgbaToGray(image);
+            List<Candle> candles = candleDetector.detect(gray, image.getWidth(), image.getHeight());
+            Prediction prediction = predictionEngine.analyze(candles);
+            runOnUiThread(() -> render(prediction, candles.size()));
+        } catch (RuntimeException e) {
+            runOnUiThread(() -> {
+                statusText.setText("ANALYZER ERROR");
+                detailsText.setText("Analysis paused: " + e.getClass().getSimpleName());
+            });
+        } finally {
+            image.close();
+            analyzing = false;
+        }
+    }
+
+    private void render(Prediction p, int candleCount) {
+        predictionText.setText(p.label);
+        probabilityText.setText(String.format(Locale.US, "UP %.1f%%    DOWN %.1f%%", p.up * 100.0, p.down * 100.0));
+        diagnosticsText.setText(String.format(Locale.US,
+                "Candles: %d | Quality: %.0f%% | Agreement: %.0f%%",
+                candleCount, p.quality * 100.0, p.agreement * 100.0));
+
+        StringBuilder text = new StringBuilder();
+        text.append("Regime: ").append(p.regime.name()).append("\n");
+        for (String reason : p.reasons) text.append("- ").append(reason).append("\n");
+        detailsText.setText(text.toString());
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == CAMERA_REQUEST && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            startCamera();
+        } else {
+            statusText.setText("CAMERA PERMISSION REQUIRED");
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        analyzerExecutor.shutdownNow();
+    }
+}

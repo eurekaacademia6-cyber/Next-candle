@@ -1,1 +1,19 @@
-package com.nextcandle.ai; public final class RegimeEngine { public enum Regime{TRENDING_UP,TRENDING_DOWN,RANGE,COMPRESSION,EXPANSION,UNKNOWN} public Regime detect(FeatureVector f){double s=f.x[22],l=f.x[23],v=f.x[25],e=f.x[12];if(Math.abs(s)<.15&&Math.abs(l)<.15)return Math.abs(e)<.1?Regime.COMPRESSION:Regime.RANGE;if(e>.25||v>.35)return Regime.EXPANSION;if(s>.25&&l>.1)return Regime.TRENDING_UP;if(s<-.25&&l<-.1)return Regime.TRENDING_DOWN;return Regime.UNKNOWN;}}
+package com.nextcandle.ai;
+
+public final class RegimeEngine {
+    public enum Regime { TREND_UP, TREND_DOWN, RANGE, COMPRESSION, EXPANSION, UNKNOWN }
+
+    public Regime detect(FeatureVector f) {
+        double shortTrend = f.x[22];
+        double longTrend = f.x[23];
+        double expansion = f.x[12];
+        double vol = f.x[25];
+        if (Math.abs(shortTrend) < 0.15 && Math.abs(longTrend) < 0.15) {
+            return Math.abs(expansion) < 0.10 ? Regime.COMPRESSION : Regime.RANGE;
+        }
+        if (expansion > 0.25 || vol > 0.35) return Regime.EXPANSION;
+        if (shortTrend > 0.25 && longTrend > 0.10) return Regime.TREND_UP;
+        if (shortTrend < -0.25 && longTrend < -0.10) return Regime.TREND_DOWN;
+        return Regime.UNKNOWN;
+    }
+}

@@ -1,15 +1,21 @@
-# Next Candle AI Ultimate 1.0
+# Next Candle AI Ultimate 2.0
 
-Standalone Android camera application for continuous next-candle prediction. No MT5, broker, bridge or internet is required.
+A clean Android project for live camera-based next-candle analysis.
 
-The app attempts to reconstruct 10-15 visible candles and combines candle geometry, trajectory, structure proxies, liquidity sweep proxies, momentum, volatility and regime analysis with an adaptive local model.
+## Build with GitHub Actions
+1. Upload this repository to GitHub.
+2. Open Actions.
+3. Run Build Next Candle AI APK.
+4. Download the artifact NextCandleAI-debug-apk.
 
-Outputs: UP / DOWN / NO EDGE.
+## Android build
+- AGP 8.13.0
+- Gradle 8.13
+- JDK 17
+- compileSdk 36
+- targetSdk 36
+- minSdk 24
+- CameraX 1.6.1
 
-NO EDGE is intentionally a first-class output. The app does not guarantee accuracy or profitability.
-
-## Build
-GitHub Actions -> Build -> download `NextCandleAI-debug-apk` artifact.
-
-## Research
-See `research/` and `docs/` for the historical training and walk-forward validation pipeline.
+## No bridge
+This project is standalone. It does not need MT5, Python, a broker, or a network connection.

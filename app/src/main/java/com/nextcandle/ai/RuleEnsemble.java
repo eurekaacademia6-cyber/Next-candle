@@ -1,1 +1,39 @@
-package com.nextcandle.ai; import java.util.*; public final class RuleEnsemble { public static final class Component{public final String name;public final double pUp;Component(String n,double p){name=n;pUp=p;}} public List<Component>score(FeatureVector f,RegimeEngine.Regime r){List<Component>o=new ArrayList<>();o.add(new Component("Candle",Maths.sigmoid(1.8*f.x[0]-.8*f.x[1]+.9*f.x[2])));o.add(new Component("Momentum",Maths.sigmoid(1.7*f.x[6]+f.x[7]+.5*f.x[21])));o.add(new Component("Trajectory",Maths.sigmoid(1.7*f.x[10]+1.1*f.x[11]+.7*f.x[26])));o.add(new Component("Location",Maths.sigmoid(-.9*f.x[24]+.6*f.x[13]-.6*f.x[14])));o.add(new Component("Liquidity",Maths.sigmoid(2*f.x[15]-2*f.x[16]+.8*f.x[18])));o.add(new Component("Pattern",Maths.sigmoid(1.6*f.x[17]+.7*f.x[18])));double rb=r==RegimeEngine.Regime.TRENDING_UP?.75:r==RegimeEngine.Regime.TRENDING_DOWN?-.75:0;o.add(new Component("Regime",Maths.sigmoid(1.4*rb)));return o;} public double average(List<Component>c){if(c.isEmpty())return .5;double s=0;for(Component x:c)s+=x.pUp;return s/c.size();} public double agreement(List<Component>c,double p){int a=0;for(Component x:c)if((x.pUp>=.5)==(p>=.5))a++;return c.isEmpty()?0:(double)a/c.size();}}
+package com.nextcandle.ai;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public final class RuleEnsemble {
+    public static final class Component {
+        public final String name;
+        public final double pUp;
+        public Component(String name, double pUp) { this.name = name; this.pUp = pUp; }
+    }
+
+    public List<Component> score(FeatureVector f, RegimeEngine.Regime r) {
+        List<Component> out = new ArrayList<>();
+        double regime = r == RegimeEngine.Regime.TREND_UP ? 0.70 : r == RegimeEngine.Regime.TREND_DOWN ? -0.70 : 0.0;
+        out.add(new Component("Candle", Maths.sigmoid(1.5*f.x[0] - 0.8*f.x[1] + 0.9*f.x[2])));
+        out.add(new Component("Momentum", Maths.sigmoid(1.4*f.x[6] + 0.8*f.x[7] + 0.5*f.x[21])));
+        out.add(new Component("Trajectory", Maths.sigmoid(1.8*f.x[10] + 0.9*f.x[11] + 0.5*f.x[26])));
+        out.add(new Component("Structure", Maths.sigmoid(1.2*f.x[13] - 1.2*f.x[14] + 0.7*f.x[22])));
+        out.add(new Component("Liquidity", Maths.sigmoid(2.0*f.x[15] - 2.0*f.x[16] + 0.7*f.x[18])));
+        out.add(new Component("Pattern", Maths.sigmoid(1.6*f.x[17] + 0.6*f.x[18])));
+        out.add(new Component("Regime", Maths.sigmoid(1.6*regime)));
+        return out;
+    }
+
+    public double average(List<Component> items) {
+        double s = 0.0;
+        for (Component c : items) s += c.pUp;
+        return items.isEmpty() ? 0.5 : s / items.size();
+    }
+
+    public double agreement(List<Component> items, double pUp) {
+        if (items.isEmpty()) return 0.0;
+        boolean up = pUp >= 0.5;
+        int agree = 0;
+        for (Component c : items) if ((c.pUp >= 0.5) == up) agree++;
+        return (double) agree / items.size();
+    }
+}
