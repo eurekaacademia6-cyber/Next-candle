@@ -1,0 +1,1 @@
+package com.nextcandle.ai; public final class FeatureVector { public static final int SIZE=28; public final double[] x=new double[SIZE]; public FeatureVector set(int i,double v){if(i>=0&&i<SIZE)x[i]=sanitize(v);return this;} public static double sanitize(double v){if(Double.isNaN(v)||Double.isInfinite(v))return 0;return Math.max(-8,Math.min(8,v));}}

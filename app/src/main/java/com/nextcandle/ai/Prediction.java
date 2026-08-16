@@ -1,0 +1,1 @@
+package com.nextcandle.ai; import java.util.*; public final class Prediction{public final String label;public final double up,down,quality,agreement;public final RegimeEngine.Regime regime;public final List<String>reasons;public Prediction(String l,double u,double q,double a,RegimeEngine.Regime r,List<String>re){label=l;up=u;down=1-u;quality=q;agreement=a;regime=r;reasons=re;}}

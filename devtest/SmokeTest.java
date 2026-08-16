@@ -1,0 +1,1 @@
+import com.nextcandle.ai.*;import java.util.*;public class SmokeTest{public static void main(String[]a){List<Candle> c=new ArrayList<>();double p=100;for(int i=0;i<15;i++){double o=p,cl=p+.2; c.add(new Candle(o,cl+.1,o-.05,cl,100,i));p=cl;}Prediction x=new PredictionEngine().analyze(c);System.out.println(x.label+" "+x.up+" "+x.quality);}}
